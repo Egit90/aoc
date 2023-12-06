@@ -22,9 +22,11 @@ func Day2() {
 	read := file.ReadFile()
 	total := 0
 	for _, line := range read {
-		if ok, game := processLine(line); ok {
-			total += game
-		}
+		// if ok, game := processLine(line); ok {
+		// 	total += game
+		// }
+		total += processLine2(line)
+
 	}
 	fmt.Println(total)
 }
@@ -59,6 +61,46 @@ func processLine(s string) (bool, int) {
 	}
 
 	return true, gameNumber
+}
+
+func processLine2(s string) int {
+
+	input := strings.Split(s, ":")
+
+	// 3 blue, 4 red
+	// 1 red, 2 green, 6 blue
+	// 2 green
+	gameInput := strings.Split(input[1], ";")
+	myMap := map[string]int{
+		"red":   0,
+		"green": 0,
+		"blue":  0,
+	}
+
+	for _, v := range gameInput {
+
+		// 3 blue
+		// 4 red
+		fi := strings.Split(v, ",")
+
+		for _, line := range fi {
+			thisNumber, thePick := separateBySpace(line)
+
+			if myMap[thePick] < thisNumber {
+				myMap[thePick] = thisNumber
+			}
+
+		}
+
+	}
+
+	total := 1
+	for _, v := range myMap {
+		total *= v
+
+	}
+
+	return total
 }
 
 func separateBySpace(s string) (int, string) {
