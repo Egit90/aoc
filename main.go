@@ -8,5 +8,5 @@ import (
 func main() {
 	// day1.Day1()
 	// day2.Day2(true)
-	day3.Day3(types.One)
+	day3.Day3(types.Two)
 }
