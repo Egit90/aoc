@@ -1,7 +1,6 @@
 package day3
 
 import (
-	"errors"
 	"fmt"
 	"regexp"
 	"strconv"
@@ -12,13 +11,14 @@ import (
 
 type game struct {
 	puzzle        []string
-	listOfMatches map[int][][]int
-	startsIndex   map[int][][]int
+	listOfMatches map[int][]cords
+	symboleIndex  map[int][]int
 	res           int
 }
 type cords struct {
-	lineIndex int
-	charIndex int
+	startIdx int
+	lastIdx  int
+	Number   int
 }
 
 func Day3(partNumber types.PartNumber) {
@@ -26,118 +26,69 @@ func Day3(partNumber types.PartNumber) {
 	read := file.ReadFile()
 
 	if types.One == partNumber {
-		p1 := &game{puzzle: read, listOfMatches: make(map[int][][]int)}
+		p1 := &game{puzzle: read, listOfMatches: make(map[int][]cords), symboleIndex: make(map[int][]int)}
 		p1.getListOfNumbersAndIndexes()
-		p1.analyzeMatchesWithinLine()
+		p1.getListOfSymboleIndexs()
+		p1.compare()
 		fmt.Println(p1.res)
 		return
 	}
-
-	//part 2
-
-	p1 := &game{puzzle: read, listOfMatches: make(map[int][][]int)}
-	p1.getListOfNumbersAndIndexes()
-	p1.getListOfStarsIndexs()
-
 }
 
 func (p *game) getListOfNumbersAndIndexes() {
 	for lineIndex, line := range p.puzzle {
 		re := regexp.MustCompile(`[\d]+`)
 		matches := re.FindAllIndex([]byte(line), -1)
-		p.listOfMatches[lineIndex] = matches
-
-	}
-}
-
-func (p *game) getListOfStarsIndexs() {
-	for lineIndex, line := range p.puzzle {
-		re := regexp.MustCompile(`\*`)
-		matches := re.FindAllIndex([]byte(line), -1)
-		p.startsIndex[lineIndex] = matches
-
-	}
-}
-
-func (p *game) analyzeMatchesWithinLine() {
-
-	for lineIndex, matches := range p.listOfMatches {
 		for _, match := range matches {
-			startIdx, endIdx := match[0], match[1]
-			p.addToResult(lineIndex, startIdx, endIdx)
-		}
-	}
-
-}
-
-func (p *game) addToResult(lineIndex, startIdx, endIdx int) {
-	if p.checkIfShouldBeAdded(lineIndex, startIdx, endIdx-1) {
-		substring := p.puzzle[lineIndex][startIdx:endIdx]
-		if number, err := strconv.Atoi(substring); err == nil {
-			p.res += number
-		}
-
-	}
-}
-
-func (p *game) checkIfShouldBeAdded(lineIndex, leftIndex, rightIndex int) bool {
-
-	directions := map[string]cords{
-		"leftSide":    {lineIndex, leftIndex - 1},
-		"rightSide":   {lineIndex, rightIndex + 1},
-		"upRight":     {lineIndex - 1, rightIndex},
-		"upRight+1":   {lineIndex - 1, rightIndex + 1},
-		"upLeft":      {lineIndex - 1, leftIndex},
-		"upLeft+1":    {lineIndex - 1, leftIndex - 1},
-		"DownRight":   {lineIndex + 1, rightIndex},
-		"DownRight+1": {lineIndex + 1, rightIndex + 1},
-		"DownLeft":    {lineIndex + 1, leftIndex},
-		"DownLeft+1":  {lineIndex + 1, leftIndex - 1},
-	}
-
-	for i := leftIndex + 1; i < rightIndex; i++ {
-		directions[fmt.Sprintf("middleUp%d", i)] = cords{lineIndex - 1, i}
-		directions[fmt.Sprintf("middledown%d", i)] = cords{lineIndex + 1, i}
-	}
-
-	for _, v := range directions {
-		if Char, err := p.getValueAtIndex(v.lineIndex, v.charIndex); err == nil {
-			if isDot(Char, 0) {
-				continue
+			num, _ := strconv.Atoi(line[match[0]:match[1]])
+			_tmp := cords{
+				startIdx: match[0],
+				lastIdx:  match[1] - 1,
+				Number:   num,
 			}
-			return true
+			p.listOfMatches[lineIndex] = append(p.listOfMatches[lineIndex], _tmp)
 		}
-
 	}
-
-	return false
 }
 
-func (p *game) lineExists(line int) ([][]int, bool) {
-	if line > 0 && line < len(p.listOfMatches)-1 {
-		return p.listOfMatches[line], true
+func (p *game) getListOfSymboleIndexs() {
+	for lineIndex, line := range p.puzzle {
+		re := regexp.MustCompile(`[^0-9.]`)
+		matches := re.FindAllIndex([]byte(line), -1)
+		for _, match := range matches {
+			p.symboleIndex[lineIndex] = append(p.symboleIndex[lineIndex], match[0])
+		}
 	}
-	return nil, false
 }
 
-func (p *game) getValueAtIndex(lineIndex, index int) (string, error) {
-
-	if lineIndex < 0 || lineIndex >= len(p.puzzle) {
-		return "", errors.New("out of bound")
+func (p *game) compare() {
+	for symbolY, symbolXList := range p.symboleIndex {
+		for _, symbolX := range symbolXList {
+			p.checkForNumbers(symbolX, symbolY)
+		}
 	}
-
-	s := (p.puzzle)[lineIndex]
-
-	if index < 0 || index >= len(s) {
-		return "", errors.New("out of bound")
-	}
-	return string(s[index]), nil
 }
 
-func isDot(s string, index int) bool {
-	if index < len(s) {
-		return string(s[index]) == "."
+func (p *game) checkForNumbers(symboleX, symboleY int) {
+
+	li := [][]cords{}
+
+	if line, ok := p.listOfMatches[symboleY]; ok {
+		li = append(li, line)
+	}
+	if lineAbove, ok := p.listOfMatches[symboleY-1]; ok {
+		li = append(li, lineAbove)
+	}
+	if lineBellow, ok := p.listOfMatches[symboleY+1]; ok {
+		li = append(li, lineBellow)
 	}
 
-	return true
+	for _, cords := range li {
+		for _, cord := range cords {
+			if symboleX == cord.startIdx || symboleX == cord.startIdx-1 || symboleX == cord.startIdx+1 ||
+				symboleX == cord.lastIdx || symboleX == cord.lastIdx+1 || symboleX == cord.lastIdx-1 {
+				p.res += cord.Number
+			}
+		}
+	}
 }
